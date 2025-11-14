@@ -1,2 +1,0 @@
-# DBMS
-Started with UI.
