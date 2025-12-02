@@ -597,7 +597,11 @@
       document.getElementById('currentUser').innerText = state.users[0]?.id || 'admin';
     }
 
-
+    // ===== Init =====
+    loadState();
+    if(!state.users || state.users.length===0) seed();
+    refreshStats();
+    render();
   </script>
 </body>
 </html>
