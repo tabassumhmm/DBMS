@@ -1,0 +1,431 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Company UI Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root{
+      --bg:#f5f7fb;
+      --card:#ffffff;
+      --muted:#6b7280;
+      --accent:#0f62fe;
+      --glass: rgba(15,98,254,0.06);
+      --danger:#dc2626;
+      font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:#0f172a}
+    .app{display:flex;min-height:100vh}
+    /* Sidebar */
+    .sidebar{width:260px;background:linear-gradient(180deg,#0f172a 0%, #0b1220 100%);color:#fff;padding:22px 18px;display:flex;flex-direction:column;gap:18px}
+    .brand{font-weight:700;font-size:18px;display:flex;align-items:center;gap:10px}
+    .nav{display:flex;flex-direction:column;gap:6px}
+    .nav button{background:transparent;border:none;color:rgba(255,255,255,0.82);text-align:left;padding:10px;border-radius:8px;cursor:pointer;font-weight:600}
+    .nav button.active, .nav button:hover{background:var(--glass);color:#fff}
+    .sidebar .small{font-size:12px;opacity:0.8}
+    .main{flex:1;padding:20px}
+    .topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px}
+    .search{display:flex;gap:8px;align-items:center}
+    .search input{padding:8px 12px;border-radius:10px;border:1px solid #e6edf3;background:#fff;min-width:220px}
+    .card{background:var(--card);border-radius:12px;padding:18px;box-shadow:0 4px 16px rgba(16,24,40,0.04)}
+    .grid{display:grid;grid-template-columns:repeat(12,1fr);gap:16px}
+    .col-4{grid-column:span 4}
+    .col-8{grid-column:span 8}
+    header.hint{display:flex;align-items:center;gap:12px}
+    h2{margin:0;font-size:18px}
+
+    /* Tables */
+    table{width:100%;border-collapse:collapse}
+    th,td{padding:10px 12px;border-bottom:1px solid #eef2f7;text-align:left;font-size:14px}
+    th{background:#fbfdff;font-weight:700}
+    .toolbar{display:flex;gap:8px;align-items:center}
+    .btn{padding:8px 12px;border-radius:8px;border:none;cursor:pointer;font-weight:600}
+    .btn.primary{background:var(--accent);color:#fff}
+    .btn.ghost{background:transparent;border:1px solid #e6edf3}
+    .btn.warn{background:var(--danger);color:#fff}
+
+    /* Modal */
+    .modal-backdrop{position:fixed;inset:0;background:rgba(4,6,8,0.4);display:flex;align-items:center;justify-content:center;z-index:40}
+    .modal{width:720px;max-width:95%;background:#fff;border-radius:12px;padding:18px}
+    .form-row{display:flex;gap:12px;margin-bottom:10px}
+    .form-row input, .form-row textarea, .form-row select{flex:1;padding:8px;border-radius:8px;border:1px solid #e6edf3}
+    .muted{color:var(--muted);font-size:13px}
+
+    /* responsive */
+    @media (max-width:900px){
+      .sidebar{display:none}
+      .grid{grid-template-columns:repeat(6,1fr)}
+      .col-4{grid-column:span 6}
+      .col-8{grid-column:span 6}
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand">📈 BG Press — Company UI</div>
+      <div class="small muted">Signed in as: <strong id="current-company-name">Company-ABC</strong></div>
+      <nav class="nav" id="main-nav">
+        <button data-view="dashboard" class="active">Dashboard</button>
+        <button data-view="company">Company Profile</button>
+        <button data-view="stock">Stock</button>
+        <button data-view="stock-transactions">Stock Transactions</button>
+        <button data-view="audit">Audit Reports</button>
+        <button data-view="trade">Trade</button>
+        <button id="logout-btn">Logout</button>
+      </nav>
+      <div style="margin-top:auto;font-size:12px;opacity:0.85">Professional UI example • Demo data only</div>
+    </aside>
+
+    <main class="main">
+      <div class="topbar">
+        <div class="hint"><h2 id="view-title">Dashboard</h2></div>
+        <div class="search"><input id="global-search" placeholder="Search (press Enter)"/></div>
+      </div>
+
+      <div id="content-area">
+        <!-- Dashboard -->
+        <section id="view-dashboard" class="view card">
+          <div class="grid">
+            <div class="col-8 card">
+              <h3>Market Overview</h3>
+              <canvas id="chart-market" style="height:260px"></canvas>
+            </div>
+            <div class="col-4 card">
+              <h3>Portfolio Breakdown</h3>
+              <canvas id="chart-pie" style="height:260px"></canvas>
+            </div>
+            <div class="col-8 card" style="grid-column:span 8;"> 
+              <h3>Recent Stock Transactions</h3>
+              <div id="recent-tx-table"></div>
+            </div>
+            <div class="col-4 card">
+              <h3>Quick Actions</h3>
+              <div class="toolbar" style="flex-direction:column;align-items:stretch">
+                <button class="btn primary" onclick="openModal('company-add-edit')">Edit Company Profile</button>
+                <button class="btn ghost" onclick="openModal('stock-add')">Add Stock</button>
+                <button class="btn ghost" onclick="openModal('audit-add')">Add Audit Report</button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Company Profile -->
+        <section id="view-company" class="view" style="display:none">
+          <div class="card">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+              <h3>Company Profile</h3>
+              <div class="toolbar">
+                <button class="btn ghost" onclick="renderCompanyTable()">Refresh</button>
+                <button class="btn primary" onclick="openModal('company-add-edit')">Edit</button>
+              </div>
+            </div>
+            <div id="company-table"></div>
+          </div>
+        </section>
+
+        <!-- Stock -->
+        <section id="view-stock" class="view" style="display:none">
+          <div class="card">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+              <h3>Stocks</h3>
+              <div class="toolbar">
+                <input id="stock-search" placeholder="Search stocks..." oninput="renderStockTable()" />
+                <button class="btn primary" onclick="openModal('stock-add')">Add Stock</button>
+              </div>
+            </div>
+            <div id="stock-table"></div>
+          </div>
+        </section>
+
+        <!-- Stock Transactions -->
+        <section id="view-stock-transactions" class="view" style="display:none">
+          <div class="card">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+              <h3>Stock Transactions</h3>
+              <div class="toolbar">
+                <input id="tx-search" placeholder="Search transactions..." oninput="renderTxTable()" />
+                <button class="btn ghost" onclick="renderTxTable()">Refresh</button>
+              </div>
+            </div>
+            <div id="tx-table"></div>
+          </div>
+        </section>
+
+        <!-- Audit Reports -->
+        <section id="view-audit" class="view" style="display:none">
+          <div class="card">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+              <h3>Audit Reports</h3>
+              <div class="toolbar">
+                <input id="audit-search" placeholder="Search audit reports..." oninput="renderAuditTable()"/>
+                <button class="btn primary" onclick="openModal('audit-add')">Add Report</button>
+              </div>
+            </div>
+            <div id="audit-table"></div>
+          </div>
+        </section>
+
+        <!-- Trade -->
+        <section id="view-trade" class="view" style="display:none">
+          <div class="card">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+              <h3>Trades</h3>
+              <div class="toolbar">
+                <input id="trade-search" placeholder="Search trades..." oninput="renderTradeTable()"/>
+                <button class="btn primary" onclick="openModal('trade-add')">Add Trade</button>
+              </div>
+            </div>
+            <div id="trade-table"></div>
+          </div>
+        </section>
+
+      </div>
+    </main>
+  </div>
+
+  <!-- Modals -->
+  <div id="modal-root"></div>
+
+  <script>
+    /*********************** Demo data + "permissions" ***********************/
+    // currentCompanyId simulates logged-in company id
+    const currentCompanyId = 'CPARTY-001';
+    const currentCompany = { companyID: currentCompanyId, companyName: 'BG Press Ltd', sector: 'Publishing', contactInfo: 'contact@bgpress.example' };
+    document.getElementById('current-company-name').innerText = currentCompany.companyName;
+
+    // Company table: cparyID, companyName, sector, contactinfo
+    const companies = [ {...currentCompany}, { companyID: 'CPARTY-002', companyName: 'Alpha Media', sector:'Media', contactInfo:'alpha@example.com' } ];
+
+    // Stock: stockID,total_shares,CpartyID
+    let stocks = [ { stockID:'STK-1001', totalShares:10000, cpartyID:'CPARTY-001' }, { stockID:'STK-2001', totalShares:5000, cpartyID:'CPARTY-002' }];
+
+    // Stock transactions: transactionID, timestamp, amount, stockID, IpartyID, CompanyStockManagerID
+    let transactions = [
+      { transactionID:'TX-9001', timestamp:'2025-11-28', amount:12000.50, stockID:'STK-1001', IpartyID:'INV-01', CompanyStockManagerID:'MGR-1' },
+      { transactionID:'TX-9002', timestamp:'2025-11-29', amount:2200.00, stockID:'STK-2001', IpartyID:'INV-02', CompanyStockManagerID:'MGR-2' }
+    ];
+
+    // Audit report: audit_report_ID,text(20),Report_date,date,auditor_iD(10),CompanyPartyID(20),InstituitionpartyID(20),finding_summary(100)
+    let audits = [ { audit_report_ID:'AR-100', Report_date:'2025-10-10', auditor_iD:'AUD-1', CompanyPartyID:currentCompanyId, InstituitionpartyID:'INST-1', finding_summary:'Minor book-keeping discrepancies found.' } ];
+
+    // Trade: trade_ID,participants,Asset_type,timestamp,status,Trade_team_ID,contact_info,buyerPartyID,sellerpartyID
+    let trades = [ { trade_ID:'TR-001', participants:'BG Press & Alpha', Asset_type:'Shares', timestamp:'2025-11-10', status:'Completed', Trade_team_ID:'TT-1', contact_info:'trader@bgpress.example', buyerPartyID:'CPARTY-001', sellerpartyID:'CPARTY-002' } ];
+
+    /*********************** Navigation and view management ***********************/
+    const views = document.querySelectorAll('.view');
+    document.getElementById('main-nav').addEventListener('click', (e)=>{
+      if(e.target.dataset.view){
+        showView(e.target.dataset.view);
+        document.querySelectorAll('#main-nav button').forEach(b=>b.classList.remove('active'));
+        e.target.classList.add('active');
+      }
+    });
+    function showView(id){
+      views.forEach(v=>v.style.display='none');
+      const viewEl = document.getElementById('view-'+id);
+      if(viewEl) viewEl.style.display='block';
+      document.getElementById('view-title').innerText = id.replace(/-/g,' ').replace(/\b\w/g, c=>c.toUpperCase());
+      // render content for the view
+      if(id==='company') renderCompanyTable();
+      if(id==='stock') renderStockTable();
+      if(id==='stock-transactions') renderTxTable();
+      if(id==='audit') renderAuditTable();
+      if(id==='trade') renderTradeTable();
+      if(id==='dashboard') renderDashboard();
+    }
+
+    /*********************** Renderers ***********************/
+    function renderCompanyTable(){
+      const root = document.getElementById('company-table');
+      // company can only view their own
+      const rows = companies.filter(c => c.companyID===currentCompanyId);
+      let html = '<table><thead><tr><th>Company ID</th><th>Company Name</th><th>Sector</th><th>Contact Info</th><th>Actions</th></tr></thead><tbody>';
+      rows.forEach(r=>{
+        html += `<tr><td>${r.companyID}</td><td>${escapeHtml(r.companyName)}</td><td>${escapeHtml(r.sector)}</td><td>${escapeHtml(r.contactInfo)}</td><td><button class="btn ghost" onclick="openModal('company-add-edit','${r.companyID}')">Edit</button></td></tr>`;
+      });
+      html += '</tbody></table>';
+      root.innerHTML = html;
+    }
+
+    function renderStockTable(){
+      const q = (document.getElementById('stock-search')?.value||'').toLowerCase();
+      const root = document.getElementById('stock-table');
+      // company can view/add/edit their own stocks only
+      const rows = stocks.filter(s=>s.cpartyID===currentCompanyId && (s.stockID.toLowerCase().includes(q) || String(s.totalShares).includes(q)) );
+      let html = '<table><thead><tr><th>Stock ID</th><th>Total Shares</th><th>Company ID</th><th>Actions</th></tr></thead><tbody>';
+      rows.forEach(r=>{
+        html += `<tr><td>${r.stockID}</td><td>${r.totalShares}</td><td>${r.cpartyID}</td><td><button class="btn" onclick="openModal('stock-edit','${r.stockID}')">Edit</button></td></tr>`;
+      });
+      html += '</tbody></table>';
+      root.innerHTML = html;
+    }
+
+    function renderTxTable(){
+      const q = (document.getElementById('tx-search')?.value||'').toLowerCase();
+      const root = document.getElementById('tx-table');
+      // company can view transactions of its stocks
+      const myStockIds = stocks.filter(s=>s.cpartyID===currentCompanyId).map(s=>s.stockID);
+      const rows = transactions.filter(t=> myStockIds.includes(t.stockID) && (t.transactionID.toLowerCase().includes(q) || t.stockID.toLowerCase().includes(q)) );
+      let html = '<table><thead><tr><th>Transaction ID</th><th>Timestamp</th><th>Amount</th><th>Stock ID</th><th>IpartyID</th><th>Manager ID</th></tr></thead><tbody>';
+      rows.forEach(r=>{
+        html += `<tr><td>${r.transactionID}</td><td>${r.timestamp}</td><td>${r.amount.toFixed(2)}</td><td>${r.stockID}</td><td>${r.IpartyID}</td><td>${r.CompanyStockManagerID}</td></tr>`;
+      });
+      html += '</tbody></table>';
+      root.innerHTML = html;
+      // recent tx for dashboard
+      const recentRoot = document.getElementById('recent-tx-table');
+      recentRoot.innerHTML = html;
+    }
+
+    function renderAuditTable(){
+      const q = (document.getElementById('audit-search')?.value||'').toLowerCase();
+      const root = document.getElementById('audit-table');
+      const rows = audits.filter(a=> a.CompanyPartyID===currentCompanyId && (a.audit_report_ID.toLowerCase().includes(q) || a.finding_summary.toLowerCase().includes(q)) );
+      let html = '<table><thead><tr><th>Report ID</th><th>Report Date</th><th>Auditor ID</th><th>Finding Summary</th><th>Actions</th></tr></thead><tbody>';
+      rows.forEach(r=>{
+        html += `<tr><td>${r.audit_report_ID}</td><td>${r.Report_date}</td><td>${r.auditor_iD}</td><td>${escapeHtml(r.finding_summary)}</td><td><button class="btn" onclick="openModal('audit-edit','${r.audit_report_ID}')">Edit</button></td></tr>`;
+      });
+      html += '</tbody></table>';
+      root.innerHTML = html;
+    }
+
+    function renderTradeTable(){
+      const q = (document.getElementById('trade-search')?.value||'').toLowerCase();
+      const root = document.getElementById('trade-table');
+      // company can view trades where it is buyer or seller
+      const rows = trades.filter(t=> (t.buyerPartyID===currentCompanyId || t.sellerpartyID===currentCompanyId) && (t.trade_ID.toLowerCase().includes(q) || t.participants.toLowerCase().includes(q)) );
+      let html = '<table><thead><tr><th>Trade ID</th><th>Participants</th><th>Asset Type</th><th>Timestamp</th><th>Status</th><th>Actions</th></tr></thead><tbody>';
+      rows.forEach(r=>{
+        html += `<tr><td>${r.trade_ID}</td><td>${escapeHtml(r.participants)}</td><td>${r.Asset_type}</td><td>${r.timestamp}</td><td>${r.status}</td><td><button class="btn" onclick="openModal('trade-view','${r.trade_ID}')">View</button></td></tr>`;
+      });
+      html += '</tbody></table>';
+      root.innerHTML = html;
+    }
+
+    /*********************** Modals and CRUD ***********************/
+    function openModal(type, id){
+      const root = document.getElementById('modal-root');
+      let html = '';
+      if(type==='company-add-edit'){
+        const rec = companies.find(c=>c.companyID===id) || companies.find(c=>c.companyID===currentCompanyId);
+        html = `<div class="modal-backdrop" onclick="closeModal(event)"><div class="modal" onclick="event.stopPropagation()"><h3>Edit Company</h3><div class='form-row'><input id='m-companyName' value='${escapeHtml(rec.companyName)}' placeholder='Company Name'/></div><div class='form-row'><input id='m-sector' value='${escapeHtml(rec.sector)}' placeholder='Sector'/></div><div class='form-row'><input id='m-contact' value='${escapeHtml(rec.contactInfo)}' placeholder='Contact Info'/></div><div style='display:flex;gap:8px;justify-content:flex-end'><button class='btn ghost' onclick='closeModal()'>Cancel</button><button class='btn primary' onclick="saveCompany('${rec.companyID}')">Save</button></div></div></div>`;
+      }
+      else if(type==='stock-add'){
+        html = `<div class="modal-backdrop" onclick="closeModal(event)"><div class="modal" onclick="event.stopPropagation()"><h3>Add Stock</h3><div class='form-row'><input id='m-stockID' placeholder='Stock ID (varchar 20)'/></div><div class='form-row'><input id='m-totalShares' placeholder='Total Shares (int)' type='number'/></div><div class='form-row'><input id='m-cpartyID' value='${currentCompanyId}' readonly/></div><div style='display:flex;gap:8px;justify-content:flex-end'><button class='btn ghost' onclick='closeModal()'>Cancel</button><button class='btn primary' onclick='saveStock()'>Add Stock</button></div></div></div>`;
+      }
+      else if(type==='stock-edit'){
+        const rec = stocks.find(s=>s.stockID===id);
+        html = `<div class="modal-backdrop" onclick="closeModal(event)"><div class="modal" onclick="event.stopPropagation()"><h3>Edit Stock</h3><div class='form-row'><input id='m-stockID' value='${rec.stockID}' readonly/></div><div class='form-row'><input id='m-totalShares' value='${rec.totalShares}' type='number'/></div><div style='display:flex;gap:8px;justify-content:flex-end'><button class='btn ghost' onclick='closeModal()'>Cancel</button><button class='btn primary' onclick="updateStock('${rec.stockID}')">Save</button></div></div></div>`;
+      }
+      else if(type==='audit-add'){
+        html = `<div class="modal-backdrop" onclick="closeModal(event)"><div class="modal" onclick="event.stopPropagation()"><h3>Add Audit Report</h3><div class='form-row'><input id='m-audit-id' placeholder='Report ID (text 20)'/></div><div class='form-row'><input id='m-audit-date' type='date' /></div><div class='form-row'><input id='m-auditor-id' placeholder='Auditor ID (varchar 10)'/></div><div class='form-row'><textarea id='m-finding' placeholder='Finding summary (varchar 100)'></textarea></div><div style='display:flex;gap:8px;justify-content:flex-end'><button class='btn ghost' onclick='closeModal()'>Cancel</button><button class='btn primary' onclick='saveAudit()'>Add</button></div></div></div>`;
+      }
+      else if(type==='audit-edit'){
+        const rec = audits.find(a=>a.audit_report_ID===id);
+        html = `<div class="modal-backdrop" onclick="closeModal(event)"><div class="modal" onclick="event.stopPropagation()"><h3>Edit Audit</h3><div class='form-row'><input id='m-audit-id' value='${rec.audit_report_ID}' readonly/></div><div class='form-row'><input id='m-audit-date' type='date' value='${rec.Report_date}'/></div><div class='form-row'><input id='m-auditor-id' value='${rec.auditor_iD}'/></div><div class='form-row'><textarea id='m-finding'>${escapeHtml(rec.finding_summary)}</textarea></div><div style='display:flex;gap:8px;justify-content:flex-end'><button class='btn ghost' onclick='closeModal()'>Cancel</button><button class='btn primary' onclick="updateAudit('${rec.audit_report_ID}')">Save</button></div></div></div>`;
+      }
+      else if(type==='trade-add'){
+        html = `<div class="modal-backdrop" onclick="closeModal(event)"><div class="modal" onclick="event.stopPropagation()"><h3>Add Trade</h3><div class='form-row'><input id='m-trade-id' placeholder='Trade ID (varchar 20)'/></div><div class='form-row'><input id='m-participants' placeholder='Participants (varchar 500)'/></div><div class='form-row'><input id='m-asset' placeholder='Asset Type (varchar 50)'/></div><div class='form-row'><input id='m-trade-date' type='date'/></div><div class='form-row'><input id='m-status' placeholder='Status'/></div><div class='form-row'><input id='m-trade-team' placeholder='Trade Team ID'/></div><div class='form-row'><input id='m-contact-trade' placeholder='Contact Info'/></div><div class='form-row'><input id='m-buyer' placeholder='Buyer Party ID' value='${currentCompanyId}'/></div><div class='form-row'><input id='m-seller' placeholder='Seller Party ID'/></div><div style='display:flex;gap:8px;justify-content:flex-end'><button class='btn ghost' onclick='closeModal()'>Cancel</button><button class='btn primary' onclick='saveTrade()'>Add</button></div></div></div>`;
+      }
+      else if(type==='trade-view'){
+        const rec = trades.find(t=>t.trade_ID===id);
+        html = `<div class="modal-backdrop" onclick="closeModal(event)"><div class="modal" onclick="event.stopPropagation()"><h3>Trade Details</h3><div class='form-row'><strong>Trade ID:</strong><div>${rec.trade_ID}</div></div><div class='form-row'><strong>Participants:</strong><div>${escapeHtml(rec.participants)}</div></div><div class='form-row'><strong>Asset Type:</strong><div>${rec.Asset_type}</div></div><div class='form-row'><strong>Timestamp:</strong><div>${rec.timestamp}</div></div><div class='form-row'><strong>Status:</strong><div>${rec.status}</div></div><div style='display:flex;gap:8px;justify-content:flex-end'><button class='btn ghost' onclick='closeModal()'>Close</button></div></div></div>`;
+      }
+
+      root.innerHTML = html;
+    }
+    function closeModal(e){
+      if(e) e.stopPropagation();
+      document.getElementById('modal-root').innerHTML='';
+    }
+
+    function saveCompany(id){
+      const name = document.getElementById('m-companyName').value.trim();
+      const sector = document.getElementById('m-sector').value.trim();
+      const contact = document.getElementById('m-contact').value.trim();
+      const idx = companies.findIndex(c=>c.companyID===id || c.companyID===currentCompanyId);
+      if(idx>=0){
+        companies[idx].companyName = name; companies[idx].sector = sector; companies[idx].contactInfo = contact;
+      }
+      document.getElementById('current-company-name').innerText = name;
+      closeModal(); renderCompanyTable();
+      alert('Company profile saved.');
+    }
+
+    function saveStock(){
+      const id = document.getElementById('m-stockID').value.trim();
+      const shares = parseInt(document.getElementById('m-totalShares').value,10)||0;
+      const cparty = document.getElementById('m-cpartyID').value;
+      if(!id){alert('stock id required');return}
+      stocks.push({stockID:id,totalShares:shares,cpartyID:cparty});
+      closeModal(); renderStockTable(); alert('Stock added.');
+    }
+    function updateStock(id){
+      const shares = parseInt(document.getElementById('m-totalShares').value,10)||0;
+      const idx = stocks.findIndex(s=>s.stockID===id);
+      if(idx>=0){stocks[idx].totalShares = shares}
+      closeModal(); renderStockTable(); renderTxTable(); alert('Stock updated.');
+    }
+
+    function saveAudit(){
+      const id = document.getElementById('m-audit-id').value.trim();
+      const date = document.getElementById('m-audit-date').value;
+      const auditor = document.getElementById('m-auditor-id').value.trim();
+      const finding = document.getElementById('m-finding').value.trim();
+      if(!id){alert('Report ID required');return}
+      audits.push({ audit_report_ID:id, Report_date:date||new Date().toISOString().slice(0,10), auditor_iD:auditor, CompanyPartyID:currentCompanyId, InstituitionpartyID:'INST-LOCAL', finding_summary:finding });
+      closeModal(); renderAuditTable(); alert('Audit report added.');
+    }
+    function updateAudit(id){
+      const idx = audits.findIndex(a=>a.audit_report_ID===id);
+      if(idx>=0){ audits[idx].Report_date=document.getElementById('m-audit-date').value; audits[idx].auditor_iD=document.getElementById('m-auditor-id').value; audits[idx].finding_summary=document.getElementById('m-finding').value; }
+      closeModal(); renderAuditTable(); alert('Audit report updated.');
+    }
+
+    function saveTrade(){
+      const id = document.getElementById('m-trade-id').value.trim();
+      if(!id){alert('Trade ID required');return}
+      const rec = { trade_ID:id, participants:document.getElementById('m-participants').value, Asset_type:document.getElementById('m-asset').value, timestamp:document.getElementById('m-trade-date').value||new Date().toISOString().slice(0,10), status:document.getElementById('m-status').value, Trade_team_ID:document.getElementById('m-trade-team').value, contact_info:document.getElementById('m-contact-trade').value, buyerPartyID:document.getElementById('m-buyer').value, sellerpartyID:document.getElementById('m-seller').value };
+      trades.push(rec);
+      closeModal(); renderTradeTable(); alert('Trade added.');
+    }
+
+    /*********************** Utilities ***********************/
+    function escapeHtml(s){ if(!s) return ''; return String(s).replace(/[&<>"]/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c])); }
+
+    // global search binds to multiple tables
+    document.getElementById('global-search').addEventListener('keydown',(e)=>{ if(e.key==='Enter'){ const q = e.target.value; document.getElementById('stock-search').value=q; document.getElementById('tx-search').value=q; document.getElementById('audit-search').value=q; document.getElementById('trade-search').value=q; renderStockTable(); renderTxTable(); renderAuditTable(); renderTradeTable(); } });
+
+    // logout
+    document.getElementById('logout-btn').addEventListener('click',()=>{ alert('You have been logged out.'); /* In real app redirect to login */ });
+
+    /*********************** Charts ***********************/
+    let chartMarket=null; let chartPie=null;
+    function renderDashboard(){
+      // line chart (market)
+      const ctx = document.getElementById('chart-market').getContext('2d');
+      const labels = ['2025-09-01','2025-10-01','2025-11-01','2025-12-01'];
+      const data = { labels, datasets:[{ label:'Index Value', data:[10500,11200,10900,11500], tension:0.3, fill:false }] };
+      if(chartMarket) chartMarket.destroy();
+      chartMarket = new Chart(ctx, { type:'line', data, options:{ responsive:true, plugins:{legend:{display:false}} } });
+
+      // pie chart (portfolio)
+      const ctx2 = document.getElementById('chart-pie').getContext('2d');
+      const pdata = { labels: stocks.filter(s=>s.cpartyID===currentCompanyId).map(s=>s.stockID), datasets:[{ data: stocks.filter(s=>s.cpartyID===currentCompanyId).map(s=>s.totalShares) }] };
+      if(chartPie) chartPie.destroy();
+      chartPie = new Chart(ctx2, { type:'pie', data:pdata, options:{ responsive:true } });
+
+      renderTxTable();
+    }
+
+    // initial
+    showView('dashboard');
+
+  </script>
+</body>
+</html>

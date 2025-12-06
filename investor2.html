@@ -1,0 +1,527 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Investor UI</title>
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root{
+      --bg:#f5f7fb; --card:#ffffff; --muted:#6b7280; --accent:#2563eb; --success:#10b981; --danger:#ef4444;
+      --radius:12px; --glass: rgba(255,255,255,0.8);
+    }
+    *{box-sizing:border-box;font-family:Inter,ui-sans-serif,system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial}
+    body{margin:0;background:linear-gradient(180deg,#eef2ff 0%,var(--bg) 100%);color:#0f172a}
+    .app{display:flex;min-height:100vh}
+    /* Sidebar */
+    .sidebar{width:260px;background:var(--card);padding:22px;border-right:1px solid rgba(15,23,42,0.04);}
+    .brand{display:flex;align-items:center;gap:12px;margin-bottom:18px}
+    .logo{width:44px;height:44px;background:linear-gradient(135deg,var(--accent),#7c3aed);border-radius:10px;display:flex;align-items:center;justify-content:center;color:white;font-weight:700}
+    nav a{display:flex;align-items:center;gap:12px;padding:10px;border-radius:10px;color:var(--muted);text-decoration:none;margin-bottom:6px}
+    nav a.active{background:linear-gradient(90deg,rgba(37,99,235,0.08),rgba(124,58,237,0.06));color:var(--accent);font-weight:600}
+    nav a:hover{background:rgba(37,99,235,0.04);color:var(--accent)}
+    .content{flex:1;padding:24px}
+    .topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px}
+    .card{background:var(--card);padding:18px;border-radius:var(--radius);box-shadow:0 6px 18px rgba(2,6,23,0.04);}
+    .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+    .chart-row{display:flex;gap:16px;margin-top:16px}
+    table{width:100%;border-collapse:collapse}
+    th,td{padding:10px;border-bottom:1px solid #eef2ff;text-align:left;font-size:14px}
+    th{color:var(--muted);font-weight:600}
+    .btn{display:inline-block;padding:8px 12px;border-radius:8px;background:var(--accent);color:white;text-decoration:none;border:none;cursor:pointer}
+    .btn.secondary{background:transparent;color:var(--accent);border:1px solid rgba(37,99,235,0.12)}
+    .btn.ghost{background:transparent;color:var(--muted);border:1px solid rgba(15,23,42,0.04)}
+    .btn.danger{background:var(--danger)}
+    .search{display:flex;gap:8px;align-items:center}
+    .search input{padding:8px 10px;border-radius:8px;border:1px solid #e6eefc}
+    /* modal */
+    .overlay{position:fixed;inset:0;background:rgba(2,6,23,0.4);display:none;align-items:center;justify-content:center}
+    .overlay.show{display:flex}
+    .modal{width:720px;max-width:95%;background:var(--card);padding:18px;border-radius:12px}
+    .form-row{display:flex;gap:12px;margin-bottom:10px}
+    .form-row input,.form-row select,textarea{flex:1;padding:10px;border-radius:8px;border:1px solid #e6eefc}
+    .small{font-size:13px;color:var(--muted)}
+    .table-actions{display:flex;gap:8px}
+    .right{margin-left:auto}
+    .muted{color:var(--muted)}
+    footer{margin-top:18px;color:var(--muted);font-size:13px}
+    @media (max-width:900px){.grid{grid-template-columns:1fr}.sidebar{display:none}}
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar card">
+      <div class="brand">
+        <div class="logo">IV</div>
+        <div>
+          <div style="font-weight:700">Investor Portal</div>
+          <div class="small">Professional Dashboard</div>
+        </div>
+      </div>
+      <nav>
+        <a href="#" id="nav-dashboard" class="active">📊 Dashboard</a>
+        <a href="#" id="nav-profile">👤 Investor Profile</a>
+        <a href="#" id="nav-transactions">💱 Stock Transaction</a>
+        <a href="#" id="nav-trades">🤝 Trade</a>
+        <a href="#" id="nav-logout" style="margin-top:12px">🚪 Logout</a>
+      </nav>
+      <div style="margin-top:18px" class="small muted">Logged in as:</div>
+      <div style="font-weight:600" id="logged-in-id">INV-001</div>
+    </aside>
+
+    <main class="content">
+      <div class="topbar">
+        <h2 id="page-title">Dashboard</h2>
+        <div style="display:flex;gap:12px;align-items:center">
+          <div class="search">
+            <input id="global-search" placeholder="Search transactions or trades..." />
+            <button class="btn secondary" id="search-btn">Search</button>
+          </div>
+          <div class="btn ghost" id="btn-profile">My Profile</div>
+        </div>
+      </div>
+
+      <!-- Dashboard -->
+      <section id="view-dashboard">
+        <div class="grid">
+          <div class="card">
+            <div style="display:flex;align-items:center;justify-content:space-between">
+              <div>
+                <div class="small">Portfolio Value</div>
+                <div style="font-size:20px;font-weight:700">$<span id="portfolio-value">125,430.00</span></div>
+              </div>
+              <div class="muted">As of <span id="dashboard-date"></span></div>
+            </div>
+            <div style="margin-top:12px">
+              <canvas id="portfolioChart" height="120"></canvas>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="small">Recent Transactions</div>
+            <div style="margin-top:12px;max-height:180px;overflow:auto">
+              <table id="recent-trans-table">
+                <thead><tr><th>Txn ID</th><th>Timestamp</th><th>Amount</th></tr></thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="small">Trade Status Snapshot</div>
+            <div style="margin-top:12px">
+              <canvas id="tradeChart" height="120"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <div class="chart-row">
+          <div class="card" style="flex:1">
+            <div style="display:flex;align-items:center;justify-content:space-between">
+              <div><div class="small">Holdings Breakdown</div><div style="font-weight:700">By Sector</div></div>
+              <div class="small muted">Interactive</div>
+            </div>
+            <div style="margin-top:12px">
+              <canvas id="holdingsChart" height="140"></canvas>
+            </div>
+          </div>
+
+          <div class="card" style="width:360px">
+            <div class="small">Quick Actions</div>
+            <div style="display:flex;flex-direction:column;gap:8px;margin-top:10px">
+              <button class="btn" id="quick-add-txn">Add Transaction</button>
+              <button class="btn secondary" id="quick-add-trade">Create Trade</button>
+              <button class="btn ghost" id="quick-edit-profile">Edit Profile</button>
+            </div>
+          </div>
+        </div>
+
+      </section>
+
+      <!-- Profile -->
+      <section id="view-profile" style="display:none">
+        <div class="card">
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <div>
+              <div class="small">Investor Profile</div>
+              <div style="font-weight:700" id="investor-name-title">Investor Name</div>
+            </div>
+            <div>
+              <button class="btn" id="edit-profile">Edit Profile</button>
+            </div>
+          </div>
+
+          <div style="margin-top:12px;overflow:auto">
+            <table id="investor-table">
+              <thead><tr><th>IpartyID</th><th>Investor name</th><th>Contact info</th><th>Account type</th><th>Actions</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- Transactions -->
+      <section id="view-transactions" style="display:none">
+        <div style="display:flex;gap:12px;margin-bottom:12px;align-items:center">
+          <h3 style="margin:0">Stock Transactions</h3>
+          <div class="right">
+            <button class="btn" id="add-transaction">Add Transaction</button>
+            <button class="btn secondary" id="export-txns">Export</button>
+          </div>
+        </div>
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+            <div class="small muted">Manage your stock transactions. You can add, edit, view and search.</div>
+            <div style="display:flex;gap:8px">
+              <input id="txn-search" placeholder="Search txnID, stockID, amount..." />
+              <button class="btn secondary" id="txn-search-btn">Search</button>
+            </div>
+          </div>
+
+          <div style="overflow:auto;max-height:520px">
+            <table id="txn-table">
+              <thead><tr><th>transactionID</th><th>timestamp</th><th>amount</th><th>stockID</th><th>IpartyID</th><th>CompanyStockManagerID</th><th>Actions</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- Trades -->
+      <section id="view-trades" style="display:none">
+        <div style="display:flex;gap:12px;margin-bottom:12px;align-items:center">
+          <h3 style="margin:0">Trades</h3>
+          <div class="right">
+            <button class="btn" id="add-trade">Add Trade</button>
+          </div>
+        </div>
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+            <div class="small muted">Trades where you participate as buyer or seller. You may only view records where you are buyer or seller.</div>
+            <div style="display:flex;gap:8px">
+              <input id="trade-search" placeholder="Search tradeID, participant, asset type..." />
+              <button class="btn secondary" id="trade-search-btn">Search</button>
+            </div>
+          </div>
+
+          <div style="overflow:auto;max-height:520px">
+            <table id="trade-table">
+              <thead><tr><th>trade_ID</th><th>participants</th><th>Asset_type</th><th>timestamp</th><th>status</th><th>Trade_team_ID</th><th>contact_info</th><th>buyerPartyID</th><th>sellerpartyID</th><th>Actions</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <footer>Investor UI demo • All data stored locally in your browser (localStorage).</footer>
+    </main>
+  </div>
+
+  <!-- Modals -->
+  <div class="overlay" id="overlay">
+    <div class="modal" id="modal-root"></div>
+  </div>
+
+  <script>
+    /***** Utilities & Sample Data *****/
+    const LS_KEYS = {INV:'investor_data', TXN:'txn_data', TRD:'trade_data'};
+
+    function uid(prefix='ID'){return prefix + '-' + Math.random().toString(36).slice(2,9).toUpperCase()}
+    function todayISO(){return new Date().toISOString().slice(0,19).replace('T',' ')}
+
+    // Initialize sample data if not present
+    function assertSample(){
+      if(!localStorage.getItem(LS_KEYS.INV)){
+        const inv = {IpartyID:'INV-001', name:'Ayesha Rahman', contact:'ayesha@example.com', accountType:'Individual'};
+        localStorage.setItem(LS_KEYS.INV, JSON.stringify([inv]));
+      }
+      if(!localStorage.getItem(LS_KEYS.TXN)){
+        const txns = [
+          {transactionID:'TXN-1001', timestamp:new Date().toISOString(), amount:1200.50, stockID:'STK-202', IpartyID:'INV-001', CompanyStockManagerID:'CSM-11'},
+          {transactionID:'TXN-1002', timestamp:new Date().toISOString(), amount:5400.00, stockID:'STK-103', IpartyID:'INV-001', CompanyStockManagerID:'CSM-07'}
+        ];
+        localStorage.setItem(LS_KEYS.TXN, JSON.stringify(txns));
+      }
+      if(!localStorage.getItem(LS_KEYS.TRD)){
+        const trades = [
+          {trade_ID:'TRD-9001', participants:'Ayesha Rahman; XYZ Ltd', Asset_type:'Equity', timestamp:new Date().toISOString(), status:'Open', Trade_team_ID:'TT-01', contact_info:'ayesha@example.com', buyerPartyID:'INV-001', sellerpartyID:'INV-999'},
+        ];
+        localStorage.setItem(LS_KEYS.TRD, JSON.stringify(trades));
+      }
+    }
+
+    assertSample();
+
+    function readInv(){return JSON.parse(localStorage.getItem(LS_KEYS.INV) || '[]')}
+    function writeInv(v){localStorage.setItem(LS_KEYS.INV, JSON.stringify(v))}
+    function readTxns(){return JSON.parse(localStorage.getItem(LS_KEYS.TXN) || '[]')}
+    function writeTxns(v){localStorage.setItem(LS_KEYS.TXN, JSON.stringify(v))}
+    function readTrades(){return JSON.parse(localStorage.getItem(LS_KEYS.TRD) || '[]')}
+    function writeTrades(v){localStorage.setItem(LS_KEYS.TRD, JSON.stringify(v))}
+
+    // Logged in investor id (simulate auth)
+    const LOGGED_ID = readInv()[0]?.IpartyID || 'INV-001';
+    document.getElementById('logged-in-id').textContent = LOGGED_ID;
+
+    /***** Navigation logic *****/
+    const sections = {dashboard:document.getElementById('view-dashboard'), profile:document.getElementById('view-profile'), transactions:document.getElementById('view-transactions'), trades:document.getElementById('view-trades')}
+    function showSection(name){
+      document.getElementById('page-title').textContent = name.charAt(0).toUpperCase()+name.slice(1);
+      Object.keys(sections).forEach(k=>sections[k].style.display=(k===name)?'block':'none')
+      // nav active
+      document.querySelectorAll('nav a').forEach(a=>a.classList.remove('active'))
+      document.getElementById('nav-'+name).classList.add('active')
+    }
+    document.getElementById('nav-dashboard').addEventListener('click',e=>{e.preventDefault();showSection('dashboard');renderDashboard()})
+    document.getElementById('nav-profile').addEventListener('click',e=>{e.preventDefault();showSection('profile');renderProfile()})
+    document.getElementById('nav-transactions').addEventListener('click',e=>{e.preventDefault();showSection('transactions');renderTransactions()})
+    document.getElementById('nav-trades').addEventListener('click',e=>{e.preventDefault();showSection('trades');renderTrades()})
+
+    document.getElementById('nav-logout').addEventListener('click',e=>{e.preventDefault();alert('You have been logged out.');location.reload()})
+
+    /***** Modal helpers *****/
+    const overlay = document.getElementById('overlay');
+    const modalRoot = document.getElementById('modal-root');
+    function openModal(html){modalRoot.innerHTML = html; overlay.classList.add('show') }
+    function closeModal(){overlay.classList.remove('show'); modalRoot.innerHTML=''}
+    overlay.addEventListener('click',(e)=>{ if(e.target===overlay) closeModal() })
+
+    /***** Profile rendering & editing (investor can only edit name, contact, account type) *****/
+    function renderProfile(){
+      const tbody = document.querySelector('#investor-table tbody'); tbody.innerHTML='';
+      const invs = readInv();
+      invs.forEach(inv=>{
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${inv.IpartyID}</td>
+          <td>${inv.name}</td>
+          <td>${inv.contact}</td>
+          <td>${inv.accountType}</td>
+          <td><div class="table-actions">${inv.IpartyID===LOGGED_ID?'<button class="btn secondary" data-edit="'+inv.IpartyID+'">Edit</button>':''}<button class="btn ghost" data-view="${inv.IpartyID}">View</button></div></td>
+        `;
+        tbody.appendChild(tr);
+      })
+    }
+
+    document.addEventListener('click',e=>{
+      if(e.target && e.target.dataset.edit){
+        const id = e.target.dataset.edit; openProfileEdit(id)
+      }
+      if(e.target && e.target.dataset.view){
+        const id = e.target.dataset.view; openProfileView(id)
+      }
+    })
+
+    function openProfileView(id){
+      const inv = readInv().find(x=>x.IpartyID===id);
+      openModal(`<h3>View Profile</h3><div class="small muted">IpartyID: ${inv.IpartyID}</div><div style="margin-top:8px"><strong>${inv.name}</strong><div class="small">${inv.contact}</div><div class="small">Account type: ${inv.accountType}</div></div><div style="margin-top:12px;text-align:right"><button class="btn ghost" onclick="closeModal()">Close</button></div>`)
+    }
+
+    function openProfileEdit(id){
+      const inv = readInv().find(x=>x.IpartyID===id);
+      openModal(`
+        <h3>Edit Profile</h3>
+        <div class="form-row"><input id="edit-name" value="${inv.name}" /></div>
+        <div class="form-row"><input id="edit-contact" value="${inv.contact}" /></div>
+        <div class="form-row"><select id="edit-accountType"><option ${inv.accountType==='Individual'?'selected':''}>Individual</option><option ${inv.accountType==='Institution'?'selected':''}>Institution</option><option ${inv.accountType==='Corporate'?'selected':''}>Corporate</option></select></div>
+        <div style="text-align:right;margin-top:8px"><button class="btn secondary" id="save-profile">Save</button> <button class="btn ghost" onclick="closeModal()">Cancel</button></div>
+      `)
+      document.getElementById('save-profile').addEventListener('click',()=>{
+        const invs = readInv();
+        const idx = invs.findIndex(x=>x.IpartyID===id);
+        invs[idx].name = document.getElementById('edit-name').value.trim();
+        invs[idx].contact = document.getElementById('edit-contact').value.trim();
+        invs[idx].accountType = document.getElementById('edit-accountType').value;
+        writeInv(invs); closeModal(); renderProfile(); document.getElementById('investor-name-title').textContent = invs[idx].name;
+      })
+    }
+
+    // Quick edit buttons
+    document.getElementById('edit-profile').addEventListener('click',()=>openProfileEdit(LOGGED_ID))
+    document.getElementById('btn-profile').addEventListener('click',()=>{showSection('profile');renderProfile()})
+    document.getElementById('quick-edit-profile').addEventListener('click',()=>openProfileEdit(LOGGED_ID))
+
+    /***** Transactions CRUD (investor can add, edit, view, search) *****/
+    function renderTransactions(filter){
+      const tbody = document.querySelector('#txn-table tbody'); tbody.innerHTML='';
+      let txns = readTxns();
+      if(filter) txns = txns.filter(t=>Object.values(t).join('||').toLowerCase().includes(filter.toLowerCase()));
+      txns.forEach(t=>{
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${t.transactionID}</td><td>${t.timestamp}</td><td>${t.amount.toFixed(2)}</td><td>${t.stockID}</td><td>${t.IpartyID}</td><td>${t.CompanyStockManagerID}</td><td><div class="table-actions">${t.IpartyID===LOGGED_ID?`<button class="btn" data-edit-txn="${t.transactionID}">Edit</button><button class="btn secondary" data-view-txn="${t.transactionID}">View</button>`:'<button class="btn secondary" data-view-txn="'+t.transactionID+'">View</button>'}<button class="btn ghost" data-delete-txn="${t.transactionID}">Delete</button></div></td>`;
+        tbody.appendChild(tr);
+      })
+      // populate recent transactions on dashboard
+      const recentTbody = document.querySelector('#recent-trans-table tbody'); recentTbody.innerHTML='';
+      readTxns().slice().reverse().slice(0,5).forEach(t=>{const r=document.createElement('tr'); r.innerHTML=`<td>${t.transactionID}</td><td>${t.timestamp.split('T')[0]}</td><td>$${t.amount.toFixed(2)}</td>`; recentTbody.appendChild(r)})
+    }
+
+    document.getElementById('add-transaction').addEventListener('click',()=>openAddTransaction())
+    document.getElementById('quick-add-txn').addEventListener('click',()=>openAddTransaction())
+
+    function openAddTransaction(){
+      openModal(`<h3>Add Transaction</h3>
+        <div class="form-row"><input id="txn-stockID" placeholder="stockID (varchar 20)" /></div>
+        <div class="form-row"><input id="txn-amount" placeholder="amount (decimal)" type="number" step="0.01"/></div>
+        <div class="form-row"><input id="txn-company" placeholder="CompanyStockManagerID (varchar 15)" /></div>
+        <div style="text-align:right"><button class="btn" id="save-txn">Save</button> <button class="btn ghost" onclick="closeModal()">Cancel</button></div>
+      `)
+      document.getElementById('save-txn').addEventListener('click',()=>{
+        const stockID = document.getElementById('txn-stockID').value.trim();
+        const amount = parseFloat(document.getElementById('txn-amount').value) || 0;
+        const company = document.getElementById('txn-company').value.trim();
+        const txns = readTxns();
+        const newTxn = {transactionID:uid('TXN'), timestamp:new Date().toISOString(), amount, stockID, IpartyID:LOGGED_ID, CompanyStockManagerID:company};
+        txns.push(newTxn); writeTxns(txns); closeModal(); renderTransactions(); renderDashboard();
+      })
+    }
+
+    // Delegate txn table button actions
+    document.addEventListener('click',e=>{
+      if(e.target && e.target.dataset.viewTxn) openViewTxn(e.target.dataset.viewTxn)
+      if(e.target && e.target.dataset.editTxn) openEditTxn(e.target.dataset.editTxn)
+      if(e.target && e.target.dataset.deleteTxn) deleteTxn(e.target.dataset.deleteTxn)
+      if(e.target && e.target.dataset['edit-txn']) openEditTxn(e.target.dataset['edit-txn'])
+      if(e.target && e.target.dataset['view-txn']) openViewTxn(e.target.dataset['view-txn'])
+      if(e.target && e.target.dataset['delete-txn']) deleteTxn(e.target.dataset['delete-txn'])
+    })
+
+    function openViewTxn(id){const txn = readTxns().find(t=>t.transactionID===id); openModal(`<h3>View Transaction</h3><div class="small muted">${txn.transactionID}</div><div style="margin-top:8px"><strong>Amount:</strong> $${txn.amount.toFixed(2)}<br><strong>Stock:</strong> ${txn.stockID}<br><strong>CompanyStockManagerID:</strong> ${txn.CompanyStockManagerID}<br><strong>Timestamp:</strong> ${txn.timestamp}</div><div style="text-align:right;margin-top:12px"><button class="btn ghost" onclick="closeModal()">Close</button></div>`)}
+
+    function openEditTxn(id){const txns = readTxns(); const idx = txns.findIndex(t=>t.transactionID===id); const txn = txns[idx]; if(txn.IpartyID!==LOGGED_ID){alert('You can only edit your own transactions');return}
+      openModal(`<h3>Edit Transaction</h3><div class="form-row"><input id="edit-txn-amount" type="number" step="0.01" value="${txn.amount}"/></div><div class="form-row"><input id="edit-txn-stock" value="${txn.stockID}"/></div><div class="form-row"><input id="edit-txn-company" value="${txn.CompanyStockManagerID}"/></div><div style="text-align:right"><button class="btn" id="save-edit-txn">Save</button> <button class="btn ghost" onclick="closeModal()">Cancel</button></div>`)
+      document.getElementById('save-edit-txn').addEventListener('click',()=>{
+        txns[idx].amount = parseFloat(document.getElementById('edit-txn-amount').value) || 0; txns[idx].stockID = document.getElementById('edit-txn-stock').value.trim(); txns[idx].CompanyStockManagerID = document.getElementById('edit-txn-company').value.trim(); writeTxns(txns); closeModal(); renderTransactions(); renderDashboard();
+      })
+    }
+
+    function deleteTxn(id){ if(!confirm('Delete transaction '+id+'?')) return; const txns = readTxns().filter(t=>t.transactionID!==id); writeTxns(txns); renderTransactions(); renderDashboard(); }
+
+    document.getElementById('txn-search-btn').addEventListener('click',()=>{renderTransactions(document.getElementById('txn-search').value)})
+
+    /***** Trades CRUD and visibility rules (investor can participate as buyer or seller and view only their records) *****/
+    function renderTrades(filter){
+      const tbody = document.querySelector('#trade-table tbody'); tbody.innerHTML='';
+      let trades = readTrades();
+      // investor may view only records where they are buyer or seller
+      trades = trades.filter(t=>t.buyerPartyID===LOGGED_ID || t.sellerpartyID===LOGGED_ID);
+      if(filter) trades = trades.filter(t=>Object.values(t).join('||').toLowerCase().includes(filter.toLowerCase()));
+      trades.forEach(t=>{
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${t.trade_ID}</td><td>${t.participants}</td><td>${t.Asset_type}</td><td>${t.timestamp}</td><td>${t.status}</td><td>${t.Trade_team_ID}</td><td>${t.contact_info}</td><td>${t.buyerPartyID}</td><td>${t.sellerpartyID}</td><td><div class="table-actions">${(t.buyerPartyID===LOGGED_ID||t.sellerpartyID===LOGGED_ID)?`<button class="btn" data-edit-trade="${t.trade_ID}">Edit</button><button class="btn secondary" data-view-trade="${t.trade_ID}">View</button>`:'<button class="btn secondary" data-view-trade="'+t.trade_ID+'">View</button>'}<button class="btn ghost" data-delete-trade="${t.trade_ID}">Delete</button></div></td>`;
+        tbody.appendChild(tr);
+      })
+    }
+
+    document.getElementById('add-trade').addEventListener('click',()=>openAddTrade())
+    document.getElementById('quick-add-trade').addEventListener('click',()=>openAddTrade())
+
+    function openAddTrade(){
+      openModal(`<h3>Create Trade</h3>
+        <div class="form-row"><input id="trade-participants" placeholder="participants (varchar 500)"/></div>
+        <div class="form-row"><input id="trade-asset" placeholder="Asset_type (varchar 50)"/></div>
+        <div class="form-row"><input id="trade-contact" placeholder="contact_info (varchar 255)"/></div>
+        <div class="form-row"><input id="trade-team" placeholder="Trade_team_ID (varchar 15)"/></div>
+        <div class="form-row"><select id="trade-status"><option>Open</option><option>Pending</option><option>Closed</option></select></div>
+        <div class="form-row"><input id="trade-buyer" placeholder="buyerPartyID (varchar 15)" value="${LOGGED_ID}"/></div>
+        <div class="form-row"><input id="trade-seller" placeholder="sellerpartyID (varchar 15)"/></div>
+        <div style="text-align:right"><button class="btn" id="save-trade">Save</button> <button class="btn ghost" onclick="closeModal()">Cancel</button></div>
+      `)
+      document.getElementById('save-trade').addEventListener('click',()=>{
+        const trades = readTrades();
+        const newT = {trade_ID:uid('TRD'), participants:document.getElementById('trade-participants').value.trim(), Asset_type:document.getElementById('trade-asset').value.trim(), timestamp:new Date().toISOString(), status:document.getElementById('trade-status').value, Trade_team_ID:document.getElementById('trade-team').value.trim(), contact_info:document.getElementById('trade-contact').value.trim(), buyerPartyID:document.getElementById('trade-buyer').value.trim(), sellerpartyID:document.getElementById('trade-seller').value.trim()};
+        trades.push(newT); writeTrades(trades); closeModal(); renderTrades(); renderDashboard();
+      })
+    }
+
+    document.addEventListener('click',e=>{
+      if(e.target && e.target.dataset.viewTrade) openViewTrade(e.target.dataset.viewTrade)
+      if(e.target && e.target.dataset.editTrade) openEditTrade(e.target.dataset.editTrade)
+      if(e.target && e.target.dataset.deleteTrade) deleteTrade(e.target.dataset.deleteTrade)
+      if(e.target && e.target.dataset['edit-trade']) openEditTrade(e.target.dataset['edit-trade'])
+      if(e.target && e.target.dataset['view-trade']) openViewTrade(e.target.dataset['view-trade'])
+      if(e.target && e.target.dataset['delete-trade']) deleteTrade(e.target.dataset['delete-trade'])
+    })
+
+    function openViewTrade(id){const t = readTrades().find(x=>x.trade_ID===id); openModal(`<h3>View Trade</h3><div class="small muted">${t.trade_ID}</div><div style="margin-top:8px"><strong>Participants:</strong> ${t.participants}<br><strong>Asset:</strong> ${t.Asset_type}<br><strong>Status:</strong> ${t.status}<br><strong>Buyer:</strong> ${t.buyerPartyID}<br><strong>Seller:</strong> ${t.sellerpartyID}</div><div style="text-align:right;margin-top:12px"><button class="btn ghost" onclick="closeModal()">Close</button></div>`)}
+
+    function openEditTrade(id){const trades = readTrades(); const idx = trades.findIndex(x=>x.trade_ID===id); const t = trades[idx]; if(!(t.buyerPartyID===LOGGED_ID||t.sellerpartyID===LOGGED_ID)){alert('You may only edit trades you participate in');return}
+      openModal(`<h3>Edit Trade</h3>
+        <div class="form-row"><input id="edit-trade-participants" value="${t.participants}"/></div>
+        <div class="form-row"><input id="edit-trade-asset" value="${t.Asset_type}"/></div>
+        <div class="form-row"><input id="edit-trade-contact" value="${t.contact_info}"/></div>
+        <div class="form-row"><select id="edit-trade-status"><option ${t.status==='Open'?'selected':''}>Open</option><option ${t.status==='Pending'?'selected':''}>Pending</option><option ${t.status==='Closed'?'selected':''}>Closed</option></select></div>
+        <div style="text-align:right"><button class="btn" id="save-edit-trade">Save</button> <button class="btn ghost" onclick="closeModal()">Cancel</button></div>
+      `)
+      document.getElementById('save-edit-trade').addEventListener('click',()=>{
+        trades[idx].participants = document.getElementById('edit-trade-participants').value.trim(); trades[idx].Asset_type = document.getElementById('edit-trade-asset').value.trim(); trades[idx].contact_info = document.getElementById('edit-trade-contact').value.trim(); trades[idx].status = document.getElementById('edit-trade-status').value; writeTrades(trades); closeModal(); renderTrades(); renderDashboard();
+      })
+    }
+
+    function deleteTrade(id){ if(!confirm('Delete trade '+id+'?')) return; const trades = readTrades().filter(t=>t.trade_ID!==id); writeTrades(trades); renderTrades(); renderDashboard(); }
+
+    document.getElementById('trade-search-btn').addEventListener('click',()=>{renderTrades(document.getElementById('trade-search').value)})
+
+    /***** Dashboard charts (meaningful graphs) *****/
+    let portfolioChart,tradeChart,holdingsChart;
+    function renderDashboard(){
+      document.getElementById('dashboard-date').textContent = new Date().toLocaleDateString();
+      const txns = readTxns();
+      // portfolio value: sum of amounts (simple approximation)
+      const total = txns.reduce((s,t)=>s + Number(t.amount || 0),0);
+      document.getElementById('portfolio-value').textContent = total.toFixed(2)
+
+      // portfolioChart (line) - txn amounts over time
+      const labels = txns.map(t=>t.timestamp.split('T')[0]);
+      const data = txns.map(t=>Number(t.amount));
+      if(portfolioChart) portfolioChart.destroy();
+      portfolioChart = new Chart(document.getElementById('portfolioChart'),{type:'line',data:{labels, datasets:[{label:'Transaction Amount', data, fill:true}]}, options:{responsive:true,plugins:{legend:{display:false}}}})
+
+      // tradeChart (doughnut) - status distribution
+      const trades = readTrades(); const statusCounts = trades.reduce((acc,t)=>{acc[t.status]=(acc[t.status]||0)+1;return acc},{})
+      const sLabels = Object.keys(statusCounts); const sData = Object.values(statusCounts);
+      if(tradeChart) tradeChart.destroy();
+      tradeChart = new Chart(document.getElementById('tradeChart'),{type:'doughnut',data:{labels:sLabels, datasets:[{data:sData}]}, options:{responsive:true}})
+
+      // holdingsChart (bar by stockID sums)
+      const byStock = {};
+      txns.forEach(t=>{ byStock[t.stockID] = (byStock[t.stockID]||0) + Number(t.amount || 0) })
+      const hLabels = Object.keys(byStock); const hData = Object.values(byStock);
+      if(holdingsChart) holdingsChart.destroy();
+      holdingsChart = new Chart(document.getElementById('holdingsChart'),{type:'bar',data:{labels:hLabels, datasets:[{label:'Value', data:hData}]}, options:{responsive:true,plugins:{legend:{display:false}}}})
+
+      // render recent tables
+      renderTransactions(); renderTrades(); renderProfile();
+    }
+
+    /***** Global search that looks in txns and trades *****/
+    document.getElementById('search-btn').addEventListener('click',()=>{
+      const q = document.getElementById('global-search').value.trim(); if(!q) return alert('Enter search term');
+      // switch to transactions view and show filtered txns if match else trades
+      const txns = readTxns().filter(t=>Object.values(t).join('||').toLowerCase().includes(q.toLowerCase()));
+      if(txns.length){ showSection('transactions'); renderTransactions(q); return }
+      const trades = readTrades().filter(t=>Object.values(t).join('||').toLowerCase().includes(q.toLowerCase()));
+      if(trades.length){ showSection('trades'); renderTrades(q); return }
+      alert('No matches')
+    })
+
+    /***** Export (simple CSV exporter for transactions) *****/
+    function toCSV(arr, cols){
+      const header = cols.join(',') + '\n';
+      const rows = arr.map(r=>cols.map(c=>`"${(r[c]||'').toString().replace(/"/g,'""')}"`).join(',')).join('\n');
+      return header + rows;
+    }
+    document.getElementById('export-txns').addEventListener('click',()=>{
+      const txns = readTxns();
+      const csv = toCSV(txns,['transactionID','timestamp','amount','stockID','IpartyID','CompanyStockManagerID']);
+      const blob = new Blob([csv],{type:'text/csv'}); const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href=url; a.download='transactions.csv'; a.click(); URL.revokeObjectURL(url);
+    })
+
+    /***** Initial render *****/
+    renderDashboard();
+
+  </script>
+</body>
+</html>

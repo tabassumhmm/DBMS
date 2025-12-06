@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Institution UI</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    /* General reset */
+    * { margin: 0; padding: 0; box-sizing: border-box; font-family: Arial, sans-serif; }
+
+    body { background: #f4f6f9; }
+    header { background: #2c3e50; color: #fff; padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; }
+    header h1 { font-size: 1.5rem; }
+    nav { background: #34495e; width: 220px; height: 100vh; position: fixed; top: 0; left: 0; padding-top: 2rem; }
+    nav ul { list-style: none; }
+    nav ul li { margin: 1rem 0; }
+    nav ul li button { background: none; border: none; color: #ecf0f1; font-size: 1rem; width: 100%; text-align: left; padding: 0.5rem 1rem; cursor: pointer; }
+    nav ul li button:hover { background: #1abc9c; }
+
+    main { margin-left: 220px; padding: 2rem; }
+    section { display: none; background: #fff; padding: 2rem; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+
+    table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+    table, th, td { border: 1px solid #ccc; }
+    th, td { padding: 0.5rem; text-align: left; }
+    th { background: #3498db; color: #fff; }
+
+    .btn { padding: 0.4rem 0.8rem; margin: 0.2rem; border: none; border-radius: 4px; cursor: pointer; }
+    .btn-add { background: #2ecc71; color: #fff; }
+    .btn-edit { background: #f1c40f; color: #fff; }
+    .btn-view { background: #3498db; color: #fff; }
+    .btn-search { background: #9b59b6; color: #fff; }
+    .btn-logout { background: #e74c3c; color: #fff; }
+
+    input, select { padding: 0.4rem; margin: 0.2rem 0; width: 100%; }
+
+    .chart { width: 100%; height: 300px; background: #ecf0f1; margin-top: 1rem; border-radius: 8px; display: flex; justify-content: center; align-items: center; color: #7f8c8d; font-size: 1.2rem; }
+
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>Institution Dashboard</h1>
+    <button class="btn btn-logout" onclick="logout()">Logout</button>
+  </header>
+
+  <nav>
+    <ul>
+      <li><button onclick="showSection('dashboard')">Dashboard</button></li>
+      <li><button onclick="showSection('institution')">Institution Profile</button></li>
+      <li><button onclick="showSection('stock')">Stock</button></li>
+      <li><button onclick="showSection('stockTransaction')">Stock Transaction</button></li>
+      <li><button onclick="showSection('auditReport')">Audit Report</button></li>
+      <li><button onclick="showSection('trade')">Trade</button></li>
+    </ul>
+  </nav>
+
+  <main>
+    <!-- Dashboard -->
+    <section id="dashboard">
+      <h2>Dashboard</h2>
+      <div class="chart">Graphs & Charts Placeholder</div>
+    </section>
+
+    <!-- Institution Profile -->
+    <section id="institution">
+      <h2>Institution Profile</h2>
+      <table id="institutionTable">
+        <thead>
+          <tr>
+            <th>nPartyID</th>
+            <th>Name</th>
+            <th>Type</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </section>
+
+    <!-- Stock -->
+    <section id="stock">
+      <h2>Stock</h2>
+      <button class="btn btn-add" onclick="addStock()">Add Stock</button>
+      <input type="text" placeholder="Search stock by ID or total shares..." id="stockSearch" onkeyup="searchStock()">
+      <table id="stockTable">
+        <thead>
+          <tr>
+            <th>StockID</th>
+            <th>Total Shares</th>
+            <th>CpartyID</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </section>
+
+    <!-- Stock Transaction -->
+    <section id="stockTransaction">
+      <h2>Stock Transaction</h2>
+      <input type="text" placeholder="Search transaction..." id="transactionSearch" onkeyup="searchTransaction()">
+      <table id="transactionTable">
+        <thead>
+          <tr>
+            <th>TransactionID</th>
+            <th>Timestamp</th>
+            <th>Amount</th>
+            <th>StockID</th>
+            <th>IpartyID</th>
+            <th>CompanyStockManagerID</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </section>
+
+    <!-- Audit Report -->
+    <section id="auditReport">
+      <h2>Audit Report</h2>
+      <button class="btn btn-add" onclick="addAuditReport()">Add Report</button>
+      <input type="text" placeholder="Search audit report..." id="auditSearch" onkeyup="searchAuditReport()">
+      <table id="auditTable">
+        <thead>
+          <tr>
+            <th>Audit_Report_ID</th>
+            <th>Report Date</th>
+            <th>AuditorID</th>
+            <th>CompanyPartyID</th>
+            <th>InstitutionPartyID</th>
+            <th>Finding Summary</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </section>
+
+    <!-- Trade -->
+    <section id="trade">
+      <h2>Trade</h2>
+      <button class="btn btn-add" onclick="addTrade()">Add Trade</button>
+      <input type="text" placeholder="Search trade..." id="tradeSearch" onkeyup="searchTrade()">
+      <table id="tradeTable">
+        <thead>
+          <tr>
+            <th>Trade_ID</th>
+            <th>Participants</th>
+            <th>Asset_Type</th>
+            <th>Timestamp</th>
+            <th>Status</th>
+            <th>Trade_team_ID</th>
+            <th>Contact_Info</th>
+            <th>BuyerPartyID</th>
+            <th>SellerPartyID</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </section>
+  </main>
+
+  <script>
+    // Navbar Section Control
+    function showSection(sectionId){
+      document.querySelectorAll('main section').forEach(sec => sec.style.display='none');
+      document.getElementById(sectionId).style.display = 'block';
+    }
+
+    // Logout
+    function logout() {
+      alert("You have been logged out");
+      window.location.reload();
+    }
+
+    // Mock Data
+    let institutionData = [{nPartyID:"INS001", name:"ABC Institution", type:"Bank"}];
+    let stockData = [{stockID:"ST001", totalShares:1000, CpartyID:"INS001"}];
+    let transactionData = [{transactionID:"TX001", timestamp:"2025-12-04", amount:5000.00, stockID:"ST001", IpartyID:"INS001", CompanyStockManagerID:"CSM001"}];
+    let auditData = [{audit_report_ID:"AR001", Report_date:"2025-12-04", auditor_iD:"AUD001", CompanyPartyID:"CP001", InstituitionpartyID:"INS001", finding_summary:"No issues found"}];
+    let tradeData = [{trade_ID:"TR001", participants:"ABC Institution", Asset_type:"Stock", timestamp:"2025-12-04", status:"Completed", Trade_team_ID:"TT001", contact_info:"abc@inst.com", buyerPartyID:"INS001", sellerPartyID:"IP001"}];
+
+    // Render Tables
+    function renderInstitution() {
+      let tbody = document.querySelector("#institutionTable tbody");
+      tbody.innerHTML="";
+      institutionData.forEach(inst=>{
+        let tr = document.createElement("tr");
+        tr.innerHTML=`<td>${inst.nPartyID}</td>
+                      <td contenteditable="true" onblur="editInstitution('${inst.nPartyID}', this.innerText)">${inst.name}</td>
+                      <td>${inst.type}</td>
+                      <td><button class="btn btn-view" onclick="alert('Institution ID: ${inst.nPartyID}')">View</button></td>`;
+        tbody.appendChild(tr);
+      });
+    }
+    function editInstitution(id, newName){
+      let inst = institutionData.find(i=>i.nPartyID==id);
+      inst.name = newName;
+      alert("Name updated successfully");
+    }
+
+    function renderStock() {
+      let tbody = document.querySelector("#stockTable tbody");
+      tbody.innerHTML="";
+      stockData.forEach(stock=>{
+        let tr = document.createElement("tr");
+        tr.innerHTML=`<td>${stock.stockID}</td>
+                      <td contenteditable="true" onblur="editStock('${stock.stockID}', this.innerText)">${stock.totalShares}</td>
+                      <td>${stock.CpartyID}</td>
+                      <td>
+                        <button class="btn btn-view" onclick="alert('StockID: ${stock.stockID}')">View</button>
+                      </td>`;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function addStock() {
+      let stockID = prompt("Enter Stock ID:");
+      let totalShares = prompt("Enter Total Shares:");
+      stockData.push({stockID, totalShares:parseInt(totalShares), CpartyID:"INS001"});
+      renderStock();
+    }
+    function editStock(id, newShares){
+      let stock = stockData.find(s=>s.stockID==id);
+      stock.totalShares = parseInt(newShares);
+      alert("Shares updated successfully");
+    }
+    function searchStock() {
+      let query = document.getElementById("stockSearch").value.toLowerCase();
+      let filtered = stockData.filter(s=>s.stockID.toLowerCase().includes(query) || s.totalShares.toString().includes(query));
+      let tbody = document.querySelector("#stockTable tbody");
+      tbody.innerHTML="";
+      filtered.forEach(stock=>{
+        let tr = document.createElement("tr");
+        tr.innerHTML=`<td>${stock.stockID}</td>
+                      <td>${stock.totalShares}</td>
+                      <td>${stock.CpartyID}</td>
+                      <td><button class="btn btn-view" onclick="alert('StockID: ${stock.stockID}')">View</button></td>`;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function renderTransaction(){
+      let tbody = document.querySelector("#transactionTable tbody");
+      tbody.innerHTML="";
+      transactionData.forEach(tx=>{
+        let tr = document.createElement("tr");
+        tr.innerHTML=`<td>${tx.transactionID}</td>
+                      <td>${tx.timestamp}</td>
+                      <td>${tx.amount.toFixed(2)}</td>
+                      <td>${tx.stockID}</td>
+                      <td>${tx.IpartyID}</td>
+                      <td>${tx.CompanyStockManagerID}</td>`;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function searchTransaction(){
+      let query = document.getElementById("transactionSearch").value.toLowerCase();
+      let filtered = transactionData.filter(tx=>tx.transactionID.toLowerCase().includes(query));
+      let tbody = document.querySelector("#transactionTable tbody");
+      tbody.innerHTML="";
+      filtered.forEach(tx=>{
+        let tr = document.createElement("tr");
+        tr.innerHTML=`<td>${tx.transactionID}</td>
+                      <td>${tx.timestamp}</td>
+                      <td>${tx.amount.toFixed(2)}</td>
+                      <td>${tx.stockID}</td>
+                      <td>${tx.IpartyID}</td>
+                      <td>${tx.CompanyStockManagerID}</td>`;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function renderAudit() {
+      let tbody = document.querySelector("#auditTable tbody");
+      tbody.innerHTML="";
+      auditData.forEach(audit=>{
+        let tr = document.createElement("tr");
+        tr.innerHTML=`<td>${audit.audit_report_ID}</td>
+                      <td>${audit.Report_date}</td>
+                      <td>${audit.auditor_iD}</td>
+                      <td>${audit.CompanyPartyID}</td>
+                      <td>${audit.InstituitionpartyID}</td>
+                      <td contenteditable="true" onblur="editAudit('${audit.audit_report_ID}', this.innerText)">${audit.finding_summary}</td>
+                      <td><button class="btn btn-view" onclick="alert('Audit Report: ${audit.audit_report_ID}')">View</button></td>`;
+        tbody.appendChild(tr);
+      });
+    }
+    function addAuditReport() {
+      let id = prompt("Audit Report ID:");
+      let summary = prompt("Finding Summary:");
+      auditData.push({audit_report_ID:id, Report_date:new Date().toISOString().slice(0,10), auditor_iD:"AUD001", CompanyPartyID:"CP001", InstituitionpartyID:"INS001", finding_summary:summary});
+      renderAudit();
+    }
+    function editAudit(id, newSummary){
+      let audit = auditData.find(a=>a.audit_report_ID==id);
+      audit.finding_summary = newSummary;
+      alert("Audit updated successfully");
+    }
+    function searchAuditReport(){
+      let query = document.getElementById("auditSearch").value.toLowerCase();
+      let filtered = auditData.filter(a=>a.audit_report_ID.toLowerCase().includes(query) || a.finding_summary.toLowerCase().includes(query));
+      let tbody = document.querySelector("#auditTable tbody");
+      tbody.innerHTML="";
+      filtered.forEach(audit=>{
+        let tr = document.createElement("tr");
+        tr.innerHTML=`<td>${audit.audit_report_ID}</td>
+                      <td>${audit.Report_date}</td>
+                      <td>${audit.auditor_iD}</td>
+                      <td>${audit.CompanyPartyID}</td>
+                      <td>${audit.InstituitionpartyID}</td>
+                      <td>${audit.finding_summary}</td>
+                      <td><button class="btn btn-view" onclick="alert('Audit Report: ${audit.audit_report_ID}')">View</button></td>`;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function renderTrade(){
+      let tbody = document.querySelector("#tradeTable tbody");
+      tbody.innerHTML="";
+      tradeData.forEach(trade=>{
+        let tr = document.createElement("tr");
+        let showRecord = (trade.buyerPartyID=="INS001" || trade.sellerPartyID=="INS001");
+        if(showRecord){
+          tr.innerHTML=`<td>${trade.trade_ID}</td>
+                        <td>${trade.participants}</td>
+                        <td>${trade.Asset_type}</td>
+                        <td>${trade.timestamp}</td>
+                        <td>${trade.status}</td>
+                        <td>${trade.Trade_team_ID}</td>
+                        <td>${trade.contact_info}</td>
+                        <td>${trade.buyerPartyID}</td>
+                        <td>${trade.sellerPartyID}</td>
+                        <td><button class="btn btn-edit" onclick="alert('Edit Trade: ${trade.trade_ID}')">Edit</button></td>`;
+          tbody.appendChild(tr);
+        }
+      });
+    }
+    function addTrade(){
+      let id = prompt("Trade ID:");
+      let asset = prompt("Asset Type:");
+      tradeData.push({trade_ID:id, participants:"ABC Institution", Asset_type:asset, timestamp:new Date().toISOString().slice(0,10), status:"Pending", Trade_team_ID:"TT001", contact_info:"abc@inst.com", buyerPartyID:"INS001", sellerPartyID:"CP001"});
+      renderTrade();
+    }
+    function searchTrade(){
+      let query = document.getElementById("tradeSearch").value.toLowerCase();
+      let filtered = tradeData.filter(t=>t.trade_ID.toLowerCase().includes(query));
+      let tbody = document.querySelector("#tradeTable tbody");
+      tbody.innerHTML="";
+      filtered.forEach(trade=>{
+        if(trade.buyerPartyID=="INS001" || trade.sellerPartyID=="INS001"){
+          let tr = document.createElement("tr");
+          tr.innerHTML=`<td>${trade.trade_ID}</td>
+                        <td>${trade.participants}</td>
+                        <td>${trade.Asset_type}</td>
+                        <td>${trade.timestamp}</td>
+                        <td>${trade.status}</td>
+                        <td>${trade.Trade_team_ID}</td>
+                        <td>${trade.contact_info}</td>
+                        <td>${trade.buyerPartyID}</td>
+                        <td>${trade.sellerPartyID}</td>
+                        <td><button class="btn btn-edit" onclick="alert('Edit Trade: ${trade.trade_ID}')">Edit</button></td>`;
+          tbody.appendChild(tr);
+        }
+      });
+    }
+
+    // Initial render
+    showSection("dashboard");
+    renderInstitution();
+    renderStock();
+    renderTransaction();
+    renderAudit();
+    renderTrade();
+
+  </script>
+
+</body>
+</html>
